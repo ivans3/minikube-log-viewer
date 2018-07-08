@@ -1,0 +1,81 @@
+<HTML>
+<HEAD>
+</HEAD>
+<BODY BGCOLOR=BLACK>
+<STYLE>
+div.row { 
+}
+span.timestamp {
+    font-family: "Courier New";
+    color: antiquewhite;
+}
+span.msg { 
+    font-family: "Courier New";
+    font-size: 12px;
+    color: lightgray;
+    display: table-cell;
+    width: 100%;
+    word-break: break-all;
+}
+span.path { 
+    font-family: "Courier New";
+    font-size: 12px;
+    color: antiquewhite;
+    display: table-cell;
+    max-width: 200px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding-right: 10px;
+}
+</STYLE>
+<SCRIPT>
+//config
+var numRows = 500
+//Client-side filtering:
+//var fileNameMustContain = "_yournamespace_" //show only logs from containers from "yournamespace" namespace
+
+//
+var rows = []
+
+function createRow(path, msg)  {
+    var div = document.createElement("div");
+    div.className = "row"
+    var span1 = document.createElement("span");
+    span1.className = "path"
+    span1.innerText = path
+    div.appendChild(span1)
+    var span2 = document.createElement("span");
+    span2.className = "msg"
+    span2.innerText = msg
+    div.appendChild(span2)
+    document.body.insertBefore(div, document.getElementById("bottom"));
+    return div
+}
+
+if (!!window.EventSource) {
+  var source = new EventSource('/stream');
+} else {
+  // Result to xhr polling :(
+}
+
+source.addEventListener('message', function(e) {
+  //console.log(e.data);
+  var obj = JSON.parse(e.data)
+  
+  //if (obj.fileName.indexOf(fileNameMustContain) !== -1)  {  //Client-side filtering
+  var div = createRow(obj.fileName, obj.logObject.log)
+  window.scrollTo(0,document.body.scrollHeight);
+  rows.push(div)
+  if (rows.length > numRows)  {
+      var divToDelete = rows.shift()
+  
+      document.body.removeChild(divToDelete)
+  }
+  //} End Client-side filtering
+}, false);
+</SCRIPT>
+<DIV ID=bottom></DIV>
+</BODY>
+</HTML>
+

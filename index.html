@@ -1,9 +1,15 @@
 <HTML>
 <HEAD>
 </HEAD>
-<BODY BGCOLOR=BLACK>
+<BODY BGCOLOR=BLACK ONLOAD="document.getElementById('filename_filter_regexp').value = filename_filter_regexp">
 <STYLE>
 div.row { 
+}
+div.bar {
+    width: 100%;
+    background-color: antiquewhite;
+    height: 40px;
+    line-height: 40px;  
 }
 span.timestamp {
     font-family: "Courier New";
@@ -32,8 +38,16 @@ span.path {
 <SCRIPT>
 //config
 var numRows = 500
+
 //Client-side filtering:
-//var fileNameMustContain = "_yournamespace_" //show only logs from containers from "yournamespace" namespace
+function getUrlParameter(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+};
+var filename_filter_regexp = getUrlParameter('filename_filter_regexp') ? getUrlParameter('filename_filter_regexp') : "_.*_";
+
 
 //
 var rows = []
@@ -63,19 +77,24 @@ source.addEventListener('message', function(e) {
   //console.log(e.data);
   var obj = JSON.parse(e.data)
   
-  //if (obj.fileName.indexOf(fileNameMustContain) !== -1)  {  //Client-side filtering
-  var div = createRow(obj.fileName, obj.logObject.log)
-  window.scrollTo(0,document.body.scrollHeight);
-  rows.push(div)
-  if (rows.length > numRows)  {
+  if (obj.fileName.match(filename_filter_regexp))  {  //Client-side filtering
+    var div = createRow(obj.fileName, obj.logObject.log)
+    window.scrollTo(0,document.body.scrollHeight);
+    rows.push(div)
+    if (rows.length > numRows)  {
       var divToDelete = rows.shift()
   
       document.body.removeChild(divToDelete)
-  }
-  //} End Client-side filtering
+    }
+  } //End Client-side filtering
 }, false);
+
+function changeNamespaceFilter(inputitem)  {
+  filename_filter_regexp = inputitem.value
+}
 </SCRIPT>
 <DIV ID=bottom></DIV>
+<DIV ID=bar CLASS="bar">Filename Filter Regexp: <INPUT TYPE=TEXT ID=filename_filter_regexp LENTH=10 oninput="changeNamespaceFilter(this)" VALUE="_*_" /></DIV>
 </BODY>
 </HTML>
 

@@ -164,6 +164,8 @@ function namespaceDropdownChanged()  {
         }
     }
     window.scrollTo(0,document.body.scrollHeight);
+    document.getElementById('search').value = ""
+    document.getElementById('search').style.backgroundColor = ""
 }
 
 function updateNamespaces() {
@@ -184,6 +186,7 @@ function updateNamespaces() {
               arrOptions.push("<option value='"+name+"'>"+name+"</option>");
             }
             document.getElementById("namespaceDropdown").innerHTML = arrOptions.join();
+            //TODO: handle case where current namespace is deleted:
             document.getElementById("namespaceDropdown").value = savedvalue
 
             if(namespace!=null)  {

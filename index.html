@@ -206,7 +206,8 @@ function searchInputEvent(x)
     var matched = false;
     //hide divs not matching the search filter:
     for (var i in rows)  {
-          if (searchText == "" || rows[i].msg.toLowerCase().includes(searchText))  {
+          if ((searchText == "" || rows[i].msg.toLowerCase().includes(searchText)) &&
+              (filename_filter == null || rows[i].path.includes(filename_filter)))  {
              rows[i].style.display="block"
              matched = true;
         } else {

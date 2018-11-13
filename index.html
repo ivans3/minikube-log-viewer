@@ -119,7 +119,7 @@ source.addEventListener('message', function(e) {
 
     var searchText = document.getElementById('search').value
     var visibility = ((filename_filter == null || obj.fileName.includes(filename_filter)) &&
-      (searchText == '' || obj.logObject.log.includes(searchText))); 
+      (searchText == '' || obj.logObject.log.toLowerCase().includes(searchText.toLowerCase()))); 
   
     var div = createRow(obj.fileName, obj.logObject.log, visibility)
     if (!paused)  {
@@ -198,12 +198,12 @@ setTimeout(function floop () { updateNamespaces(); setTimeout(floop, namespacePo
 
 function searchInputEvent(x)
 {
-    var searchText = document.getElementById('search').value
+    var searchText = document.getElementById('search').value.toLowerCase()
   
     var matched = false;
     //hide divs not matching the search filter:
     for (var i in rows)  {
-          if (searchText == "" || rows[i].msg.includes(searchText))  {
+          if (searchText == "" || rows[i].msg.toLowerCase().includes(searchText))  {
              rows[i].style.display="block"
              matched = true;
         } else {
@@ -224,7 +224,7 @@ function searchInputEvent(x)
 
 </SCRIPT>
 <DIV ID=bottom CLASS="bottom"></DIV>
-<DIV ID=bar CLASS="bar"><SPAN CLASS="baritem">Namespace: <select name="namespace" id="namespaceDropdown" onchange="namespaceDropdownChanged()"><option value="(all)" selected>(all)</option></select></SPAN><SPAN CLASS="baritem">Search: <INPUT TYPE=TEXT WIDTH=30 ID=search onInput="searchInputEvent()"></SPAN><SPAN id="paused" CLASS="paused"><A HREF="#" onClick="window.scrollTo(0,document.body.scrollHeight); return false">(paused)</A></SPAN></DIV>
+<DIV ID=bar CLASS="bar"><SPAN CLASS="baritem">Namespace: <select name="namespace" id="namespaceDropdown" onchange="namespaceDropdownChanged()"><option value="(all)" selected>(all)</option></select></SPAN><SPAN CLASS="baritem">ISearch: <INPUT TYPE=TEXT WIDTH=30 ID=search onInput="searchInputEvent()"></SPAN><SPAN id="paused" CLASS="paused"><A HREF="#" onClick="window.scrollTo(0,document.body.scrollHeight); return false">(paused)</A></SPAN></DIV>
 </BODY>
 </HTML>
 

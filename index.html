@@ -1,15 +1,22 @@
 <HTML>
 <HEAD>
 </HEAD>
-<BODY BGCOLOR=BLACK ONLOAD="document.getElementById('filename_filter_regexp').value = filename_filter_regexp">
+<BODY BGCOLOR=BLACK>
 <STYLE>
 div.row { 
+}
+div.bottom {
+    width: 100%; 
+    height: 50px; /* note: should be >= div.bar.height */
+    background-color: black`;
 }
 div.bar {
     width: 100%;
     background-color: antiquewhite;
     height: 40px;
     line-height: 40px;  
+    position: fixed; 
+    bottom: 0%;
 }
 span.timestamp {
     font-family: "Courier New";
@@ -34,6 +41,16 @@ span.path {
     text-overflow: ellipsis;
     padding-right: 10px;
 }
+span.paused {
+    float: right;
+    margin: 5px;
+    padding: 5px;
+    display: none;
+}
+span.baritem {
+    margin-right: 5px;
+    padding-right: 5px;
+}
 </STYLE>
 <SCRIPT>
 //config
@@ -44,22 +61,42 @@ function getUrlParameter(name) {
     name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
     var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
     var results = regex.exec(location.search);
-    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+    return results === null ? null : decodeURIComponent(results[1].replace(/\+/g, ' '));
 };
-var filename_filter_regexp = getUrlParameter('filename_filter_regexp') ? getUrlParameter('filename_filter_regexp') : "_.*_";
+
+var namespace = getUrlParameter('namespace')  //initial value
+
+function setNamespaceFromQueryParam()  {
+    var index=Array.apply(null, document.getElementById('namespaceDropdown').options).map(function (x) { return x.value }).indexOf(namespace)
+
+    if (index == -1) {
+      namespace = null
+      return;
+    }
+    
+    filename_filter="_"+namespace+"_"
+    document.getElementById('namespaceDropdown').selectedIndex=index   
+    namespaceDropdownChanged()
+    namespace = null;
+}
 
 
 //
 var rows = []
 
-function createRow(path, msg)  {
+function createRow(path, msg, visibility)  {
     var div = document.createElement("div");
+    if (!visibility) {
+        div.style.display = 'none';
+    }
     div.className = "row"
     var span1 = document.createElement("span");
+    div.path = path //for convenience
     span1.className = "path"
     span1.innerText = path
     div.appendChild(span1)
     var span2 = document.createElement("span");
+    div.msg = msg //for convenience
     span2.className = "msg"
     span2.innerText = msg
     div.appendChild(span2)
@@ -73,28 +110,121 @@ if (!!window.EventSource) {
   // Result to xhr polling :(
 }
 
+var filename_filter = null;
+var paused = false;
+
 source.addEventListener('message', function(e) {
-  //console.log(e.data);
-  var obj = JSON.parse(e.data)
+    //console.log(e.data);
+    var obj = JSON.parse(e.data)
+
+    var searchText = document.getElementById('search').value
+    var visibility = ((filename_filter == null || obj.fileName.includes(filename_filter)) &&
+      (searchText == '' || obj.logObject.log.includes(searchText))); 
   
-  if (obj.fileName.match(filename_filter_regexp))  {  //Client-side filtering
-    var div = createRow(obj.fileName, obj.logObject.log)
-    window.scrollTo(0,document.body.scrollHeight);
+    var div = createRow(obj.fileName, obj.logObject.log, visibility)
+    if (!paused)  {
+        window.scrollTo(0,document.body.scrollHeight);
+    }
     rows.push(div)
     if (rows.length > numRows)  {
       var divToDelete = rows.shift()
   
       document.body.removeChild(divToDelete)
     }
-  } //End Client-side filtering
 }, false);
 
-function changeNamespaceFilter(inputitem)  {
-  filename_filter_regexp = inputitem.value
+window.addEventListener("scroll", function (event) {
+    if(this.scrollY-(document.documentElement.scrollHeight - window.innerHeight) != 0)  {
+        paused=true;
+        document.getElementById("paused").style.display="block"
+    } else {
+        paused=false;
+        document.getElementById("paused").style.display="none"
+    }
+});
+
+function namespaceDropdownChanged()  {
+    var selection = document.getElementById('namespaceDropdown').options[document.getElementById('namespaceDropdown').selectedIndex].text;
+
+    if( selection == "(all)" ) {
+       filename_filter=null;
+    } else {
+       filename_filter="_"+selection+"_"
+    }
+
+    //hide divs not matching the new filename_filter:
+    for (var i in rows)  {
+        if (filename_filter == null || rows[i].path.includes(filename_filter))  {
+            rows[i].style.display="block"
+        } else {
+            rows[i].style.display="none"
+        }
+    }
+    window.scrollTo(0,document.body.scrollHeight);
 }
+
+function updateNamespaces() {
+    var items = []
+    //console.log("updating namespaces...");
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == XMLHttpRequest.DONE) {
+            var obj=JSON.parse(xhr.responseText);
+    
+            var arrOptions = [];
+            var savedvalue = document.getElementById("namespaceDropdown").value
+            
+            arrOptions.push("<option value='(all)'>(all)</option>");
+            for (var i in obj.items) { 
+              var name = obj.items[i].metadata.name
+              //console.log(name);
+              arrOptions.push("<option value='"+name+"'>"+name+"</option>");
+            }
+            document.getElementById("namespaceDropdown").innerHTML = arrOptions.join();
+            document.getElementById("namespaceDropdown").value = savedvalue
+
+            if(namespace!=null)  {
+                setNamespaceFromQueryParam(); 
+            }
+        }
+    }
+    xhr.open('GET', '/namespaces', true);
+    xhr.send(null);
+}
+
+updateNamespaces();
+var namespacePollingDelay = 10000;
+setTimeout(function floop () { updateNamespaces(); setTimeout(floop, namespacePollingDelay) }, namespacePollingDelay)
+
+function searchInputEvent(x)
+{
+    var searchText = document.getElementById('search').value
+  
+    var matched = false;
+    //hide divs not matching the search filter:
+    for (var i in rows)  {
+          if (searchText == "" || rows[i].msg.includes(searchText))  {
+             rows[i].style.display="block"
+             matched = true;
+        } else {
+             rows[i].style.display="none"
+        }
+    }
+
+    if (searchText == '')  {
+        document.getElementById('search').style.backgroundColor = ""
+    } else if (matched) { 
+        document.getElementById('search').style.backgroundColor = "green"
+    } else {
+        document.getElementById('search').style.backgroundColor = "red"
+    }
+
+}
+
+
 </SCRIPT>
-<DIV ID=bottom></DIV>
-<DIV ID=bar CLASS="bar">Filename Filter Regexp: <INPUT TYPE=TEXT ID=filename_filter_regexp LENTH=10 oninput="changeNamespaceFilter(this)" VALUE="_*_" /></DIV>
+<DIV ID=bottom CLASS="bottom"></DIV>
+<DIV ID=bar CLASS="bar"><SPAN CLASS="baritem">Namespace: <select name="namespace" id="namespaceDropdown" onchange="namespaceDropdownChanged()"><option value="(all)" selected>(all)</option></select></SPAN><SPAN CLASS="baritem">Search: <INPUT TYPE=TEXT WIDTH=30 ID=search onInput="searchInputEvent()"></SPAN><SPAN id="paused" CLASS="paused"><A HREF="#" onClick="window.scrollTo(0,document.body.scrollHeight); return false">(paused)</A></SPAN></DIV>
 </BODY>
 </HTML>
 

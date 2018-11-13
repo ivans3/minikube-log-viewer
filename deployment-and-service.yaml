@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minikube-log-viewer
+  namespace: kube-system
 spec:
   ports:
     - port: 3000
@@ -16,7 +17,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: minikube-log-viewer
-  namespace: default
+  namespace: kube-system
 spec:
   strategy:
     type: Recreate
@@ -25,6 +26,7 @@ spec:
       labels:
         app: minikube-log-viewer
     spec:
+      serviceAccountName: sa-logviewer
       volumes:
       - name: logs
         hostPath:

@@ -12,6 +12,9 @@ import (
         "regexp"
         "io/ioutil"
         "strings"
+        "crypto/x509"
+        "crypto/tls"
+        "os"
 )
 
 // the amount of time to wait when pushing a message to
@@ -58,6 +61,54 @@ func NewServer() (broker *Broker) {
 	return
 }
 
+func fetchAndWriteNamespaces(rw http.ResponseWriter) {
+        rw.Header().Set("Content-Type", "application/json")
+ 
+        ca := x509.NewCertPool()
+        certs, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+	if err != nil {
+		log.Print("Error: %v", err)
+                return;
+	}
+	// Append our cert to the pool
+	if ok := ca.AppendCertsFromPEM(certs); !ok {
+		log.Print("Error: %v", ok)
+                return;
+	}
+
+	// Trust the cert pool in our client
+	config := &tls.Config{
+		RootCAs:            ca,
+	}
+	tr := &http.Transport{TLSClientConfig: config}
+	client := &http.Client{Transport: tr}
+
+        url := "https://"+os.Getenv("KUBERNETES_PORT_443_TCP_ADDR")+":"+os.Getenv("KUBERNETES_PORT_443_TCP_PORT")+"/api/v1/namespaces/"
+	req, _ := http.NewRequest("GET", url, nil)
+
+        //Read token file
+        token, _ := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+
+        req.Header.Set("Authorization", "Bearer "+string(token))
+	resp, err := client.Do(req)
+
+        if err != nil {
+		log.Print("Error: %v", err)
+                return
+        }
+
+        defer resp.Body.Close()
+        body, err := ioutil.ReadAll(resp.Body)
+        if err != nil {
+		log.Print("Error: %v", err)
+                return
+        }
+
+        rw.Write(body);
+
+        return      
+}
+
 func (broker *Broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
         if (req.URL.Path == "/")  {
@@ -65,6 +116,11 @@ func (broker *Broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
             dat, _ := ioutil.ReadFile("/index.html")
             //TODO: error handling
             rw.Write(dat)
+            return
+        }
+        if (req.URL.Path == "/namespaces")  {
+            fetchAndWriteNamespaces(rw)
+            //TODO: error handling
             return
         }
         if (req.URL.Path == "/debug")  {

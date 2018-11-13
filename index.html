@@ -126,10 +126,12 @@ source.addEventListener('message', function(e) {
         window.scrollTo(0,document.body.scrollHeight);
     }
     rows.push(div)
-    if (rows.length > numRows)  {
-      var divToDelete = rows.shift()
+    if (!paused)  {  //fix for firefox browser:
+       if (rows.length > numRows)  {
+           var divToDelete = rows.shift()
   
-      document.body.removeChild(divToDelete)
+           document.body.removeChild(divToDelete)
+       }
     }
 }, false);
 
@@ -141,6 +143,7 @@ window.addEventListener("scroll", function (event) {
         paused=false;
         document.getElementById("paused").style.display="none"
     }
+    return true;
 });
 
 function namespaceDropdownChanged()  {

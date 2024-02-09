@@ -54,7 +54,7 @@ span.baritem {
 </STYLE>
 <SCRIPT>
 //config
-var numRows = 500
+var numRows = 1500
 
 //Client-side filtering:
 function getUrlParameter(name) {
@@ -98,7 +98,7 @@ function createRow(path, msg, visibility)  {
     var span2 = document.createElement("span");
     div.msg = msg //for convenience
     span2.className = "msg"
-    span2.innerText = msg
+    span2.innerHTML = msg
     div.appendChild(span2)
     document.body.insertBefore(div, document.getElementById("bottom"));
     return div
@@ -115,7 +115,12 @@ var paused = false;
 
 source.addEventListener('message', function(e) {
     //console.log(e.data);
-    var obj = JSON.parse(e.data)
+    try {
+        var obj = JSON.parse(e.data)
+    } catch (error)  {
+        console.log("Error: skipping line: '"+e.data+"': "+error);
+        return
+    }
 
     var searchText = document.getElementById('search').value
     var visibility = ((filename_filter == null || obj.fileName.includes(filename_filter)) &&

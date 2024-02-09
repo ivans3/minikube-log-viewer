@@ -15,6 +15,8 @@ import (
         "crypto/x509"
         "crypto/tls"
         "os"
+        "html"
+        "encoding/json"
 )
 
 // the amount of time to wait when pushing a message to
@@ -25,7 +27,7 @@ const patience time.Duration = time.Second*1
 //     $ go run sse.go
 
 //The BackLog
-var backLogLength = 500
+var backLogLength = 1500
 var backLog [][]byte = make([][]byte, 0, 2*backLogLength)
 //Server-side filtering:
 //var backLogFilenameMustContain = "_yournamespace_" //dont put system logs in the backlog
@@ -213,6 +215,10 @@ func (broker *Broker) listen() {
 
 }
 
+type DockerJSONLog struct {
+    Log string `json:"log"`
+}
+
 func main() {
 
 	broker := NewServer()
@@ -228,18 +234,49 @@ func main() {
         scanner := bufio.NewScanner(stdout)
  
         currentFile := ""
+        jsonBytes := []byte("")
+        escapedLogMsg := []byte("") //will include outer double-quotes...
         re1 := regexp.MustCompile("^\\*\\*\\* /var/log/containers/(?P<Path>.*) \\*\\*\\*$")
+        //containerd log format: expression /^(?<time>.+) (?<stream>stdout|stderr)( (?<logtag>.))? (?<log>.*)$/
+        re2 := regexp.MustCompile("(?s)^(.+) (stdout|stderr) (.) (.*)$")
+        var replacer = strings.NewReplacer("\t", "&nbsp;&nbsp;&nbsp;&nbsp;") // ,"\u0009", "&nbsp;&nbsp;&nbsp;&nbsp;");
 
 	go func() {
               for scanner.Scan() {
                       eventString := scanner.Text()
                       m1 := re1.FindStringSubmatch(eventString)
+
                       if (m1 != nil)  {
                           currentFile = m1[1]
                           //log.Println("File: "+currentFile)
                       } else if (eventString != "") && (! strings.HasPrefix(eventString, "***"))  {
-                          jsonBytes := []byte("{\"fileName\":\""+currentFile+"\",\"logObject\":"+eventString+"}")
+                          if (strings.HasPrefix(eventString,"{"))  { // guessing it is "docker"(json) log format
+                              //1. Unmarshall and extract log field as String
+                              var myStruct DockerJSONLog
+                              err := json.Unmarshal([]byte(eventString), &myStruct)
+                              if err != nil  {
+                                fmt.Println("Error:", err)
+                                return
+                              }
+                              logMsg := myStruct.Log
+                              //2. HtmlEscape and run replacer field, then Remarshall
+                              escapedLogMsg,err = json.Marshal(replacer.Replace(html.EscapeString(logMsg)))
+                              if err != nil  {
+                                  fmt.Println("Error:",err)
+                                  continue
+                              }
+                          } else  { //guessing it is "containerd" log format
+                              m2 := re2.FindStringSubmatch(eventString)
+                              //escaped_m2_4 := replacer.Replace(m2[4])
+                              escapedLogMsg,err = json.Marshal(replacer.Replace(html.EscapeString(m2[4])))
+                              if err != nil  {
+                                  fmt.Println("Error:",err)
+                                  continue
+                              }
+                          } //TODO: other log formats?
 
+                          jsonBytes = append(append([]byte("{\"fileName\":\""+currentFile+"\",\"logObject\":{\"log\":"), escapedLogMsg...), []byte("}}")...)
+                          
                           //log.Println("Receiving event")
                           broker.Notifier <- jsonBytes
                           //put it on the backlog

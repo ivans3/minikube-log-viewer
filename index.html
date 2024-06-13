@@ -141,7 +141,7 @@ source.addEventListener('message', function(e) {
 }, false);
 
 window.addEventListener("scroll", function (event) {
-    if(this.scrollY-(document.documentElement.scrollHeight - window.innerHeight) != 0)  {
+    if(this.scrollY-(document.documentElement.scrollHeight - window.innerHeight) < -1.0)  {
         paused=true;
         document.getElementById("paused").style.display="block"
     } else {

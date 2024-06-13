@@ -128,7 +128,7 @@ source.addEventListener('message', function(e) {
   
     var div = createRow(obj.fileName, obj.logObject.log, visibility)
     if (!paused)  {
-        window.scrollTo(0,document.body.scrollHeight);
+        setTimeout(function f() {window.scrollTo(0,document.body.scrollHeight); },50);
     }
     rows.push(div)
     if (!paused)  {  //fix for firefox browser:

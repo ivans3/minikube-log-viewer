@@ -11,9 +11,9 @@ Available as a Minikube Add-On
 minikube addons enable logviewer
 ```
 
-
+Then,
 ```
-echo The URL is http://$(minikube ip):32000/
+minikube service logviewer --url -n kube-system
 ```
 
 And then visit the URL with your browser.
@@ -25,6 +25,8 @@ Features:
  * search feature
  * pause/resume feature
  * supports docker(JSON) and containerd log formats
+ * support for amd64 and arm64 platforms
+
 
 TODO:
  * hilight matches in search feature

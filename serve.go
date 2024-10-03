@@ -223,7 +223,7 @@ func main() {
 
 	broker := NewServer()
 
-        cmd := exec.Command("/xtail","/var/log/containers")
+        cmd := exec.Command("/usr/bin/xtail","/var/log/containers")
 
         stdout, err := cmd.StdoutPipe()
         checkError(err)
